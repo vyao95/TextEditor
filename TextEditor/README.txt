@@ -1,4 +1,4 @@
-Programming 5 (Editor)
+Text Editor
 
    gapbuf.c0 - Gap buffers
       bool is_gapbuf(struct gapbuf_header* G);
