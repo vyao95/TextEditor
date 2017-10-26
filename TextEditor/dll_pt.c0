@@ -1,0 +1,114 @@
+/*
+ * Doubly linked lists with point
+ * 
+ * A text buffer is a doubly linked list (dll), where one of the
+ * elements in the dll is designated as containing the point.  The
+ * list is terminated on both ends with dummy nodes whose contents are
+ * never inspected.
+ * 
+ * 15-122 Principles of Imperative Computation */
+
+/*** Interface ***/
+
+typedef struct dll_node dll;
+struct dll_node {
+  elem data; /* This is defined elsewhere (gapbuf.c0 or elem-char.c0) */
+  dll* next;
+  dll* prev;
+};
+
+typedef struct dll_pt_header* dll_pt;
+struct dll_pt_header {
+  dll* start; /* the fist node of the list (on the left)  */
+  dll* point; /* the current node (where the cursor is)   */
+  dll* end;   /* the last node of the list (on the right) */
+};
+
+bool is_dll_pt(struct dll_pt_header* B);
+
+bool dll_pt_at_left(dll_pt B);  /* Returns true if the point is the        */
+                                /*   first (non-terminal) node of the list */
+bool dll_pt_at_right(dll_pt B); /* Returns true if the point is the        */
+                                /*   last (non-terminal) node of the list  */
+
+void dll_pt_forward(dll_pt B);  /* Moves the point forward, to the right   */
+void dll_pt_backward(dll_pt B); /* Moves the point backward, to the left   */
+void dll_pt_delete(dll_pt B);   /* Remove the point node from the list     */
+
+/*** Implementation ***/
+bool is_dll_segment(dll* a, dll* b)
+{
+  dll* l = a;
+  if(a==NULL || b==NULL) return false;
+  while(l!=b)
+  {
+    if(l->next == NULL)  return false;
+    if(l->next->prev != l) return false;
+    l = l->next;
+    if(l->prev->next != l) return false;
+  }
+  return true;
+}
+bool is_dll_pt(struct dll_pt_header* B)
+{
+  if(B==NULL)
+  {
+    return false;
+  }
+  dll* s = B->start;
+  dll* e = B->end;
+  dll* p = B->point;
+  if(s!=p && p!=e && is_dll_segment(s,p) && is_dll_segment(p,e))
+  {
+    return true;
+  }
+  return false;
+}
+bool dll_pt_at_left(dll_pt B)
+//@requires is_dll_pt(B);
+{
+  if(B->point == B->start->next) return true;
+  return false;
+}
+bool dll_pt_at_right(dll_pt B)
+//@requires is_dll_pt(B);
+{
+  if(B->point == B->end->prev) return true;
+  return false;
+}
+void dll_pt_forward(dll_pt B)
+//@requires is_dll_pt(B) && !dll_pt_at_right(B);
+//@ensures is_dll_pt(B);
+{
+  B->point = B->point->next;
+}
+void dll_pt_backward(dll_pt B)
+//@requires is_dll_pt(B) && !dll_pt_at_left(B);
+//@ensures is_dll_pt(B);
+{
+  B->point = B->point->prev;
+}
+void dll_pt_delete(dll_pt B)
+//@requires is_dll_pt(B) && !(dll_pt_at_left(B) && dll_pt_at_right(B));
+//@ensures is_dll_pt(B);
+{
+  dll* l = B->point;
+  B->point->prev->next = B->point->next;
+  B->point->next->prev = B->point->prev;
+  if(l->prev!=B->start)
+  {
+    B->point = l->prev;
+  }
+  if(l->next!=B->end)
+  {
+    B->point = l->next;
+  }
+}
+bool test4(){
+  dll_pt B = alloc(struct dll_pt_header);
+  B->end = alloc(struct dll_node);
+  B->start = B->end;
+  B->end->next = NULL;
+  return is_dll_segment(B->start, B->end->next);
+}
+
