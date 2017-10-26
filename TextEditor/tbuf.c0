@@ -1,0 +1,238 @@
+/*
+ * Text buffers
+ * 
+ * The back end for a one-character text editor, a doubly-linked list
+ * whose elements are 16-character gap buffers.
+ * 
+ * 15-122 Principles of Imperative Computation */
+
+/*** Interface ***/
+
+typedef dll_pt tbuf;
+
+bool is_tbuf(struct dll_pt_header* B);
+
+bool tbuf_empty(tbuf B);    /* Checks if the text buffer is empty            */
+
+tbuf tbuf_new();            /* Creates an empty text buffer, with            */
+                            /*   gap buffers of size 16                      */
+void tbuf_split_pt(tbuf B); /* Splits a full point into two nodes, so that   */
+                            /*    the new point is not full                  */
+void tbuf_forward(tbuf B);  /* Move the cursor forward 1 char, to the right  */
+void tbuf_backward(tbuf B); /* Move the cursor backward 1 char, to the left  */
+void tbuf_insert(tbuf B, char c); /* Insert the char c before the cursor     */
+void tbuf_delete(tbuf B);         /* Delete the character before the cursor, */
+                                  /*   also deletes the point if it is empty */
+
+/*** Implementation ***/
+
+/*@
+Checks that
+1. B is a valid doubly-linked list.
+2. Each element in the linked list is a gap buffer.
+3. B consists of either one empty gap buffer or one or more non-empty
+gap buffers.
+4. All gap buffers have a size 16.
+5. All gap buffers must be correctly aligned.
+@*/
+bool is_tbuf(tbuf B)
+{
+  if(B==NULL) return false;
+  if(is_dll_pt(B)) //Checks that B is a doubly linked list with a point.
+  {
+    dll* s = B->start->next;
+    dll* e = B->end;
+    dll* p = B->point;
+    //Checks case when there's only one node in the list
+    if(dll_pt_at_left(B)&&dll_pt_at_right(B))
+    {
+      if(is_gapbuf(p->data)) //Must be gapbuf
+      {  
+        if(p->data->limit != 16) return false; //Checks for correct size
+        return true;
+      }
+      return false;
+    }
+    /* Checks the nodes in tbuf before point. Checks that all are gapbufs, 
+       non-empty, and correct size. Also, gapbuf must be at right for all 
+       nodes before point.
+    */
+    while(s!=p)
+    //@loop_invariant s!=NULL;
+    {
+      if(is_gapbuf(s->data))
+      {
+        if(gapbuf_empty(s->data)) return false;
+        if(s->data->limit != 16) return false;
+        if(!gapbuf_at_right(s->data)) return false;
+      }
+      else
+      {
+        return false;
+      }
+      s = s->next;
+    }
+    //Checks that point is valid in tbuf as well.
+    if(!is_gapbuf(p->data)) return false;
+    if(gapbuf_empty(p->data)) return false;
+    if(p->data->limit != 16) return false;
+    p = p->next;
+    /* Checks all nodes from point onwards in tbuf. All must be non-empty          gapbufs and have its gapbuf on the left.
+    */
+    while(p!=e)
+    //@loop_invariant p!=NULL;
+    {
+      if(is_gapbuf(p->data))
+      {
+        if(gapbuf_empty(p->data)) return false;
+        if(p->data->limit != 16) return false;
+        if(!gapbuf_at_left(p->data)) return false;
+      }
+      else {
+        return false;
+      }
+      p = p->next;
+    }
+    return true;
+  }
+  return false;
+}
+bool tbuf_empty(tbuf B)
+//@requires is_tbuf(B);
+{
+  dll* s = B->start;
+  dll* e = B->end;
+  dll* p = B->point;
+  return (dll_pt_at_left(B) && dll_pt_at_right(B) && gapbuf_empty(p->data));
+}
+tbuf tbuf_new()
+//@ensures is_tbuf(\result);
+{
+  tbuf t = alloc(struct dll_pt_header);
+  dll* s = alloc(struct dll_node);
+  dll* e = alloc(struct dll_node);
+  dll* p = alloc(struct dll_node); 
+  s->next = p;
+  p->prev = s;
+  p->data = gapbuf_new(16);
+  p->next = e;
+  e->prev = p;
+  t->start = s;
+  t->end = e;
+  t->point = p;
+  return t;
+}
+void tbuf_split_pt(tbuf B)
+//@requires is_tbuf(B);
+//@ensures is_tbuf(B);
+{
+  dll* s = alloc(struct dll_node);
+  dll* e = alloc(struct dll_node);
+  dll* p = B->point;
+  gapbuf G = gapbuf_new(16);
+  gapbuf H = gapbuf_new(16);
+  s->next = e;
+  s->prev = p->prev;
+  e->prev = s;
+  e->next = p->next;
+  s->data = G;
+  e->data = H;
+  if(gapbuf_full(p->data))
+  {
+    for(int i = 0; i < 8; i++)
+    //@loop_invariant i>=0 && i<=8;
+    {
+      gapbuf_insert(G, p->data->buffer[i]);
+    }
+    for(int j = 8; j < 16; j++)
+    //@loop_invariant j>=8 && j<=16;
+    {
+      gapbuf_insert(H, p->data->buffer[j]);
+    }
+    if(p->data->gap_start >= 8)
+    {
+      for(int k = 0; k < 16-(p->data->gap_start);k++)
+      //@loop_invariant k>=0 && k<= 16-(p->data->gap_start);
+      {
+        gapbuf_backward(H);
+      }
+      p->prev->next = s;
+      p->next->prev = e;
+      B->point = e;
+    }
+    else if(p->data->gap_start < 8)
+    {
+      for(int l = 0; l < 8-(p->data->gap_start);l++)
+      //@loop_invariant l>=0 && l<=8-(p->data->gap_start);
+      {
+        gapbuf_backward(G);
+      }
+      for(int m = 0; m < 8; m++)
+      //@loop_invariant m>=0 && m<=8;
+      {
+        gapbuf_backward(H); 
+      }
+      p->prev->next = s;
+      p->next->prev = e;
+      B->point = s;
+    }
+  }
+}
+void tbuf_forward(tbuf B)
+//@requires is_tbuf(B);
+//@ensures is_tbuf(B);
+{
+  gapbuf G = B->point->data;
+  if(!gapbuf_at_right(G)) gapbuf_forward(G);
+  else if(!dll_pt_at_right(B)) 
+  {
+    dll_pt_forward(B);
+    gapbuf_forward(B->point->data);
+  }
+}
+void tbuf_backward(tbuf B)
+//@requires is_tbuf(B);
+//@ensures is_tbuf(B);
+{
+  gapbuf G = B->point->data;
+  if(!gapbuf_at_left(G)) gapbuf_backward(G);
+  else if(!dll_pt_at_left(B)) 
+  {
+    dll_pt_backward(B);
+    gapbuf_backward(B->point->data);
+  }
+}
+void tbuf_insert(tbuf B, char c)
+//@requires is_tbuf(B);
+//@ensures is_tbuf(B);
+{
+  gapbuf G = B->point->data;
+  if(!gapbuf_full(G)) gapbuf_insert(G, c);
+  else {
+    tbuf_split_pt(B);
+    gapbuf_insert(B->point->data, c);
+  }
+}
+void tbuf_delete(tbuf B)
+//@requires is_tbuf(B);
+//@ensures is_tbuf(B);
+{
+  gapbuf G = B->point->data;
+  if(!(gapbuf_at_left(G)&&dll_pt_at_left(B)))
+  {
+    if(gapbuf_at_left(G))
+    {
+      dll_pt_backward(B);
+      gapbuf_delete(B->point->data);
+    }
+    else 
+    {
+      gapbuf_delete(G);
+    }
+    if(gapbuf_empty(B->point->data)
+       && !(dll_pt_at_left(B) && dll_pt_at_right(B)))
+    {
+      dll_pt_delete(B);
+    }
+  }
+}
