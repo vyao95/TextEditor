@@ -4,7 +4,7 @@
  * 
  * cc0 -d -w -x gapbuf.c0 dll_pt.c0 tbuf.c0 visuals.c0 tbuf-test.c0
  * 
- * 15-122 Principles of Imperative Computation */
+ */
 
 #use <conio>
 #use <string>
