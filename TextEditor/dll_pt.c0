@@ -6,7 +6,7 @@
  * list is terminated on both ends with dummy nodes whose contents are
  * never inspected.
  * 
- * 15-122 Principles of Imperative Computation */
+ */
 
 /*** Interface ***/
 
