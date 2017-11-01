@@ -4,7 +4,7 @@
  * The back end for a one-character text editor, a doubly-linked list
  * whose elements are 16-character gap buffers.
  * 
- * 15-122 Principles of Imperative Computation */
+ */
 
 /*** Interface ***/
 
