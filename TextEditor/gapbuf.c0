@@ -6,7 +6,7 @@
  * the beginning (inclusive, gap start) and end (exclusive, gap end)
  * of the gap.
  * 
- * 15-122 Principles of Imperative Computation */
+ */
 
 #use <string>
 
