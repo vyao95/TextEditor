@@ -2,8 +2,6 @@
  * For testing purposes.
  * This prints a visual representation of the internals of a text buffer.
  *
- * W. Lovas (wlovas@cs.cmu.edu)
- * 15-122 Principles of Imperative Computation
  */
 
 #use <conio>
